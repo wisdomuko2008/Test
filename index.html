@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ALOC Subjects Test</title>
+</head>
+<body>
+  <h2>Fetching ALOC Subject List...</h2>
+  <pre id="output"></pre>
+
+  <script>
+    const token = "QB-f81d1fe6b34089ee7562"; // Your access token
+
+    fetch("https://api.aloc.com.ng/api/v1/subjects", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    })
+    .catch(err => {
+      document.getElementById("output").textContent = "Error: " + err;
+    });
+  </script>
+</body>
+</html>
