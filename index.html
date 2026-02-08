@@ -1,28 +1,177 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ALOC Subjects Test</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flexi CBT – Payment</title>
+
+<!-- Paystack Inline -->
+<script src="https://js.paystack.co/v1/inline.js"></script>
+
+<!-- Firebase SDK (Modular) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+// ===== FIREBASE CONFIG =====
+const firebaseConfig = {
+  apiKey: "AIzaSyCPumFid5YNTWug52q2VDtSDQTLU9REgss",
+  authDomain: "flexi-tutors.firebaseapp.com",
+  projectId: "flexi-tutors",
+  storageBucket: "flexi-tutors.firebasestorage.app",
+  messagingSenderId: "320176672406",
+  appId: "1:320176672406:web:90f19511241e51c6437cb7"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ===== PAY FUNCTION =====
+window.pay = async function() {
+  const whatsapp = document.getElementById("whatsapp").value.trim();
+  const status = document.getElementById("status");
+
+  if(!whatsapp) {
+    status.textContent = "❌ Please enter your WhatsApp number";
+    return;
+  }
+
+  status.textContent = "Opening payment gateway...";
+
+  if(typeof PaystackPop === "undefined") {
+    status.textContent = "❌ Paystack not loaded. Please use Chrome or host on HTTPS.";
+    return;
+  }
+
+  const handler = PaystackPop.setup({
+    key: "pk_test_9408761e58ce1fe7a3a57c0df2422d887c3d4b35", // Replace with your public key
+    email: whatsapp + "@flexicbt.com",
+    amount: 500 * 100, // ₦500
+    currency: "NGN",
+
+    callback: async function(response) {
+      status.textContent = "✅ Payment successful! Generating your CBT PIN...";
+
+      try {
+        // Generate PIN
+        const pin = "FT-" + Math.random().toString(36).substring(2,8).toUpperCase();
+
+        // Save to Firestore
+        await setDoc(doc(db, "subscriptions", whatsapp), {
+          whatsapp,
+          pin,
+          paid: true,
+          used: false,
+          reference: response.reference,
+          createdAt: serverTimestamp()
+        });
+
+        status.innerHTML = `
+          <div style="text-align:center; padding:10px;">
+            <h3 style="color:#0b6623;">✅ Payment Confirmed</h3>
+            <p><strong>WhatsApp Number:</strong><br>${whatsapp}</p>
+            <p><strong>Your CBT PIN:</strong><br><span style="font-size:22px; color:#0b6623;">${pin}</span></p>
+            <p>You can now access the CBT exam.</p>
+          </div>
+        `;
+      } catch(err) {
+        console.error(err);
+        status.textContent = "❌ Payment confirmed but failed to save PIN. Try again later.";
+      }
+    },
+
+    onClose: function() {
+      status.textContent = "❌ Payment cancelled";
+    }
+  });
+
+  handler.openIframe();
+};
+</script>
+
+<style>
+body{
+  margin:0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(120deg, #e0f2f1, #f4f6f4);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.container{
+  background:#fff;
+  width:100%;
+  max-width:420px;
+  padding:35px;
+  border-radius:15px;
+  box-shadow:0 10px 25px rgba(0,0,0,.15);
+  text-align:center;
+  transition: all 0.3s ease;
+}
+
+.container:hover{
+  transform: translateY(-3px);
+  box-shadow:0 15px 30px rgba(0,0,0,.2);
+}
+
+h2{
+  color:#0b6623;
+  margin-bottom:15px;
+}
+
+p{
+  margin-bottom:15px;
+  font-size:16px;
+}
+
+input{
+  width:100%;
+  padding:12px;
+  margin:12px 0;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-size:16px;
+}
+
+button{
+  width:100%;
+  padding:14px;
+  background:#0b6623;
+  color:white;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover{
+  background:#084d1a;
+}
+
+.status{
+  margin-top:20px;
+  font-weight:bold;
+  min-height:50px;
+}
+</style>
 </head>
 <body>
-  <h2>Fetching ALOC Subject List...</h2>
-  <pre id="output"></pre>
 
-  <script>
-    const token = "QB-f81d1fe6b34089ee7562"; // Your access token
+<div class="container">
+  <h2>CBT Access Payment</h2>
+  <p>Pay <strong>₦500</strong> to unlock the CBT exam</p>
 
-    fetch("https://api.aloc.com.ng/api/v1/subjects", {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    })
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
-    })
-    .catch(err => {
-      document.getElementById("output").textContent = "Error: " + err;
-    });
-  </script>
+  <input type="tel" id="whatsapp" placeholder="WhatsApp Number e.g. 0803xxxxxxx">
+
+  <button onclick="pay()">Pay ₦500</button>
+
+  <div class="status" id="status"></div>
+</div>
+
 </body>
 </html>
